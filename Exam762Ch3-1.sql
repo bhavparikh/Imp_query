@@ -38,7 +38,6 @@ BEGIN TRAN
 	SET ParentName = 'Bob'
 	WHERE ParentName = 'Robert';
 
-
 --ATOMICITY
 
 BEGIN TRAN;
@@ -88,4 +87,31 @@ DELETE Examples.TestParent
 WHERE ParentName = 'Bob';
 COMMIT TRAN
 
-SELECT @@SERVERNAME
+-- XACT_ABORT works when executing 2 statements and the second one fails, it rolls back the whole transaction
+-- When there is a syntax error even in the second statement, the whole transaction does not execute.
+SET XACT_ABORT OFF;
+BEGIN TRAN;
+	INSERT INTO Examples.TestParent (ParentId, ParentName)
+	VALUES (5, 'Isabelle');
+	
+DELETE Examples.TestParent
+WHEN ParentName = 'Bob';
+COMMIT TRAN
+
+-- Arguably the best way to ensure atomicity is by using Try - Catch block 
+
+BEGIN TRY
+	BEGIN TRAN;
+		INSERT INTO Examples.TestParent (ParentId, ParentName)
+		VALUES (5, 'Isabelle');
+
+		DELETE Examples.TestParent
+		WHERE ParentName = 'Bob';
+	COMMIT TRAN;
+END TRY
+BEGIN CATCH
+	IF @@TRANCOUNT > 0
+		ROLLBACK TRAN;
+END CATCH
+
+-- CONSISTENCY
